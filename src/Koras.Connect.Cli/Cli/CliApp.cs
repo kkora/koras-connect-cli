@@ -65,9 +65,16 @@ public static class CliApp
         if (Is(p, "profile", "list")) return ProfileCommands.List;
         if (Is(p, "profile", "validate")) return ProfileCommands.Validate;
         if (Is(p, "doctor")) return DoctorCommand.Run;
+        if (Is(p, "checkpoint", "list")) return CheckpointCommands.List;
+        if (Is(p, "checkpoint", "reset")) return CheckpointCommands.Reset;
         if (Is(p, "adp", "workers", "export")) return ExportCommands.AdpWorkers;
         if (Is(p, "sap", "persons", "export")) return ExportCommands.SapPersons;
         if (Is(p, "qualtrics", "responses", "export")) return ExportCommands.QualtricsResponses;
+        if (Is(p, "dataverse", "rows", "export")) return ExportCommands.DataverseRows;
+        if (Is(p, "salesforce", "query", "export")) return ExportCommands.SalesforceQuery;
+        if (Is(p, "salesforce", "changes", "export")) return ExportCommands.SalesforceChanges;
+        if (Is(p, "graph", "users", "export")) return ExportCommands.GraphUsers;
+        if (Is(p, "graph", "groups", "export")) return ExportCommands.GraphGroups;
         return null;
     }
 }
@@ -87,6 +94,12 @@ Commands:
   adp workers export       Export ADP workers          (--fields required)
   sap persons export       Export SAP SuccessFactors persons (--fields required)
   qualtrics responses export  Start/resume a Qualtrics response export and download the vendor file
+  dataverse rows export    Export Dataverse table rows (--table, --fields; --incremental)
+  salesforce query export  Export SOQL query results   (--soql, --fields)
+  salesforce changes export  Incremental sObject export (--object, --fields)
+  graph users export       Export Microsoft Graph users  (--fields; --incremental)
+  graph groups export      Export Microsoft Graph groups (--fields; --incremental)
+  checkpoint list|reset    Inspect or clear incremental-export checkpoints
 
 Common export options:
   --profile NAME           Profile to use (required)

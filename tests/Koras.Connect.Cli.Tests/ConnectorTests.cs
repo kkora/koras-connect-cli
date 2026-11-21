@@ -134,3 +134,104 @@ public class QualtricsExportTests
     }
 }
 
+public class DataverseExportTests
+{
+    [Fact] public async Task Rows_export_follows_nextLink_and_pushes_down_select_and_filter()
+    {
+        using var cli = new TestCli(); await cli.CreateProfile("dv", "dataverse");
+        cli.Vendor.Route = r =>
+        {
+            if (!r.RequestUri!.AbsolutePath.EndsWith("/accounts")) return null;
+            return r.RequestUri.Query.Contains("skiptoken")
+                ? FakeVendor.Json("{\"value\":[{\"name\":\"C\",\"accountid\":\"3\"}]}")
+                : FakeVendor.Json("{\"value\":[{\"name\":\"A\",\"accountid\":\"1\"},{\"name\":\"B\",\"accountid\":\"2\"}],\"@odata.nextLink\":\"https://org.crm.example.test/api/data/v9.2/accounts?$select=name&$skiptoken=tok2\"}");
+        };
+        Assert.Equal(0, await cli.Run("dataverse", "rows", "export", "--profile", "dv", "--table", "accounts", "--fields", "name,accountid", "--filter", "statecode eq 0", "--format", "json"));
+        using var doc = JsonDocument.Parse(cli.DataStdout);
+        Assert.Equal(["A", "B", "C"], doc.RootElement.EnumerateArray().Select(e => e.GetProperty("name").GetString()));
+        var first = Uri.UnescapeDataString(cli.Vendor.Requests.First(x => x.Contains("/accounts")));
+        Assert.Contains("$select=name,accountid", first); Assert.Contains("$filter=statecode eq 0", first);
+    }
+    [Fact] public async Task Dataverse_forbidden_is_authorization()
+    {
+        using var cli = new TestCli(); await cli.CreateProfile("dv", "dataverse"); cli.Vendor.Route = _ => FakeVendor.Status(HttpStatusCode.Forbidden);
+        Assert.Equal(ExitCodes.Authorization, await cli.Run("doctor", "--profile", "dv"));
+    }
+    [Fact] public async Task Doctor_uses_whoami()
+    {
+        using var cli = new TestCli(); await cli.CreateProfile("dv", "dataverse");
+        cli.Vendor.Route = r => r.RequestUri!.AbsolutePath.EndsWith("/WhoAmI") ? FakeVendor.Json("{\"UserId\":\"00000000-0000-0000-0000-000000000001\",\"BusinessUnitId\":\"00000000-0000-0000-0000-000000000002\",\"OrganizationId\":\"00000000-0000-0000-0000-000000000003\"}") : null;
+        Assert.Equal(0, await cli.Run("doctor", "--profile", "dv")); Assert.Contains("WhoAmI", cli.Stderr);
+    }
+    [Fact] public async Task Invalid_table_name_is_rejected() { using var cli = new TestCli(); await cli.CreateProfile("dv", "dataverse"); Assert.Equal(ExitCodes.Usage, await cli.Run("dataverse", "rows", "export", "--profile", "dv", "--table", "a/b", "--fields", "x")); }
+}
+
+public class SalesforceExportTests
+{
+    [Fact] public async Task Query_export_follows_nextRecordsUrl_and_selects_fields()
+    {
+        using var cli = new TestCli(); await cli.CreateProfile("sf", "salesforce");
+        cli.Vendor.Route = r =>
+        {
+            var p = r.RequestUri!.AbsolutePath;
+            if (p.EndsWith("/query")) return FakeVendor.Json("{\"totalSize\":3,\"done\":false,\"nextRecordsUrl\":\"/services/data/v68.0/query/01g-2000\",\"records\":[{\"attributes\":{\"type\":\"Account\"},\"Id\":\"001A\",\"Name\":\"Alpha\"},{\"attributes\":{},\"Id\":\"001B\",\"Name\":\"Beta\"}]}");
+            if (p.EndsWith("/query/01g-2000")) return FakeVendor.Json("{\"totalSize\":3,\"done\":true,\"records\":[{\"attributes\":{},\"Id\":\"001C\",\"Name\":\"Gamma\"}]}");
+            return null;
+        };
+        Assert.Equal(0, await cli.Run("salesforce", "query", "export", "--profile", "sf", "--soql", "SELECT Id, Name FROM Account", "--fields", "Id,Name"));
+        Assert.Equal(["\"Id\",\"Name\"", "\"001A\",\"Alpha\"", "\"001B\",\"Beta\"", "\"001C\",\"Gamma\""], cli.DataStdout.Replace("\r", "").TrimEnd().Split('\n'));
+        Assert.Contains("q=SELECT Id, Name FROM Account", Uri.UnescapeDataString(cli.Vendor.Requests.First(x => x.Contains("/query?"))));
+    }
+    [Fact] public async Task Query_must_be_a_select_and_fields_are_required()
+    {
+        using var cli = new TestCli(); await cli.CreateProfile("sf", "salesforce");
+        Assert.Equal(ExitCodes.Usage, await cli.Run("salesforce", "query", "export", "--profile", "sf", "--soql", "DELETE FROM Account", "--fields", "Id"));
+        Assert.Equal(ExitCodes.Usage, await cli.Run("salesforce", "query", "export", "--profile", "sf", "--soql", "SELECT Id FROM Account"));
+        Assert.Empty(cli.Vendor.Requests);
+    }
+    [Fact] public async Task Doctor_reads_the_resource_map()
+    {
+        using var cli = new TestCli(); await cli.CreateProfile("sf", "salesforce"); cli.Vendor.Route = r => r.RequestUri!.AbsolutePath.EndsWith("/v68.0/") ? FakeVendor.Json("{\"query\":\"/services/data/v68.0/query\"}") : null;
+        Assert.Equal(0, await cli.Run("doctor", "--profile", "sf"));
+    }
+    [Fact] public async Task Salesforce_token_rejection_is_authentication()
+    {
+        using var cli = new TestCli(); await cli.CreateProfile("sf", "salesforce"); cli.Vendor.TokenStatus = HttpStatusCode.BadRequest;
+        Assert.Equal(ExitCodes.Authentication, await cli.Run("doctor", "--profile", "sf"));
+    }
+}
+
+public class GraphExportTests
+{
+    private static string User(int n) => "{\"id\":\"u" + n + "\",\"displayName\":\"User " + n + "\",\"userPrincipalName\":\"u" + n + "@example.test\",\"mail\":null}";
+
+    [Fact] public async Task Users_export_pages_and_selects_fields()
+    {
+        using var cli = new TestCli(); await cli.CreateProfile("g", "graph");
+        cli.Vendor.Route = r =>
+        {
+            if (!r.RequestUri!.AbsolutePath.EndsWith("/v1.0/users")) return null;
+            return r.RequestUri.Query.Contains("skiptoken")
+                ? FakeVendor.Json("{\"value\":[" + User(3) + "]}")
+                : FakeVendor.Json("{\"value\":[" + User(1) + "," + User(2) + "],\"@odata.nextLink\":\"https://graph.microsoft.com/v1.0/users?$select=id,displayName,mail&$top=2&$skiptoken=abc\"}");
+        };
+        Assert.Equal(0, await cli.Run("graph", "users", "export", "--profile", "g", "--fields", "id,displayName,mail", "--page-size", "2", "--filter", "accountEnabled eq true", "--format", "json"));
+        using var doc = JsonDocument.Parse(cli.DataStdout);
+        Assert.Equal(3, doc.RootElement.GetArrayLength()); Assert.Equal(JsonValueKind.Null, doc.RootElement[0].GetProperty("mail").ValueKind);
+        Assert.DoesNotContain("userPrincipalName", cli.DataStdout);
+        var first = Uri.UnescapeDataString(cli.Vendor.Requests.First(x => x.Contains("/users")));
+        Assert.Contains("$select=id,displayName,mail", first); Assert.Contains("$top=2", first); Assert.Contains("$filter=accountEnabled eq true", first);
+    }
+    [Fact] public async Task Groups_export_uses_the_groups_collection()
+    {
+        using var cli = new TestCli(); await cli.CreateProfile("g", "graph");
+        cli.Vendor.Route = r => r.RequestUri!.AbsolutePath.EndsWith("/v1.0/groups") ? FakeVendor.Json("{\"value\":[{\"id\":\"g1\",\"displayName\":\"Eng\"}]}") : null;
+        Assert.Equal(0, await cli.Run("graph", "groups", "export", "--profile", "g", "--fields", "id,displayName"));
+        Assert.Contains("\"Eng\"", cli.DataStdout);
+    }
+    [Fact] public async Task Graph_403_is_authorization_and_doctor_reports_it()
+    {
+        using var cli = new TestCli(); await cli.CreateProfile("g", "graph"); cli.Vendor.Route = _ => FakeVendor.Status(HttpStatusCode.Forbidden);
+        Assert.Equal(ExitCodes.Authorization, await cli.Run("doctor", "--profile", "g")); Assert.Contains("[fail] authorization", cli.Stderr);
+    }
+}
