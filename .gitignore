@@ -1,0 +1,12 @@
+bin/
+obj/
+artifacts/
+TestResults/
+.vs/
+.vscode/
+*.pfx
+*.p12
+*.key
+*.pem
+.env
+*.user
