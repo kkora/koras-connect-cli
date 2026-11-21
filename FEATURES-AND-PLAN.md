@@ -98,5 +98,5 @@ SDK inspection at the pinned commit found the required public APIs for all three
 
 - Dataverse delta-link detection relies on the `$deltatoken` parameter in the opaque token (SDK returns one token type for both next and delta links). Documented in `docs/SDK-FEED.md`.
 - SAP uses a caller-supplied pre-generated SAML assertion; the CLI never signs assertions. A long-running export outliving the assertion's validity is not handled.
-- Hosted CI relies on `kkora/koras-connect-sdk` being publicly readable at the pinned commit.
+- Hosted CI needs the repository secret `SDK_READ_TOKEN` (read access to `kkora/koras-connect-sdk`); the default token cannot read it. Until set, CI fails at SDK checkout.
 - Live vendor behaviour (entitlements, real payload shapes, rate limits) is unverified.

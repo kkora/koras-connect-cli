@@ -213,5 +213,8 @@ verification evidence are in [FEATURES-AND-PLAN.md](FEATURES-AND-PLAN.md).
 
 [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs restore, build, test, pack and the install smoke test on
 Ubuntu, macOS and Windows. It checks out the SDK at the commit in `SDK-COMMIT` and builds the local feed first. This
-relies on `kkora/koras-connect-sdk` being readable by the workflow (it is public); if it becomes private, add a
-read-only token secret for the checkout step.
+needs read access to `kkora/koras-connect-sdk`,
+which the default `GITHUB_TOKEN` of this repository does **not** have. **Dependency that blocks hosted CI until set:** add a
+read-only (`contents: read`) token for the SDK repository as the repository secret `SDK_READ_TOKEN`. Without it the job
+stops at a clear "Require SDK read access" step. First run (before the secret existed) failed at the SDK checkout with
+"Repository not found" on all three OSes; no build or test step ran in CI.
