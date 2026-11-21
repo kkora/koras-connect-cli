@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>koras-connect</AssemblyName>
+    <RootNamespace>Koras.Connect.Cli</RootNamespace>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>koras-connect</ToolCommandName>
+    <PackageId>Koras.Connect.Cli</PackageId>
+    <Version>0.1.0-preview.1</Version>
+    <Authors>Koras Technologies</Authors>
+    <Description>Command-line exports for ADP, SAP SuccessFactors, Qualtrics, Dataverse, Salesforce and Microsoft Graph, built on the Koras Connect SDK.</Description>
+    <RepositoryUrl>https://github.com/kkora/koras-connect-cli</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="../../README.md" Pack="true" PackagePath="/" />
+    <InternalsVisibleTo Include="Koras.Connect.Cli.Tests" />
+    <PackageReference Include="Koras.Connect.Adp" Version="$(KorasConnectSdkVersion)" />
+    <PackageReference Include="Koras.Connect.Sap.SuccessFactors" Version="$(KorasConnectSdkVersion)" />
+    <PackageReference Include="Koras.Connect.Qualtrics" Version="$(KorasConnectSdkVersion)" />
+    <PackageReference Include="Koras.Connect.Dataverse" Version="$(KorasConnectSdkVersion)" />
+    <PackageReference Include="Koras.Connect.Salesforce" Version="$(KorasConnectSdkVersion)" />
+    <PackageReference Include="Koras.Connect.Microsoft.Graph" Version="$(KorasConnectSdkVersion)" />
+    <PackageReference Include="Koras.Connect.Export" Version="$(KorasConnectSdkVersion)" />
+  </ItemGroup>
+</Project>

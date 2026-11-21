@@ -1,0 +1,4 @@
+<Solution>
+  <Folder Name="/src/"><Project Path="src/Koras.Connect.Cli/Koras.Connect.Cli.csproj" /></Folder>
+  <Folder Name="/tests/"><Project Path="tests/Koras.Connect.Cli.Tests/Koras.Connect.Cli.Tests.csproj" /></Folder>
+</Solution>

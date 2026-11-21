@@ -1,0 +1,59 @@
+name: CI
+on:
+  push:
+    branches: [develop, main, "feature/**", "fix/**"]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  build-test-smoke:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { path: cli }
+      - name: Read pinned SDK commit
+        id: pin
+        shell: bash
+        run: echo "sha=$(tr -d '[:space:]' < cli/SDK-COMMIT)" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        with:
+          repository: kkora/koras-connect-sdk
+          ref: ${{ steps.pin.outputs.sha }}
+          path: koras-connect-sdk
+      - uses: actions/setup-dotnet@v4
+        with: { dotnet-version: '10.0.x' }
+      - name: Build SDK feed (bash)
+        if: runner.os != 'Windows'
+        working-directory: cli
+        run: eng/build-sdk-feed.sh ../koras-connect-sdk
+      - name: Build SDK feed (PowerShell)
+        if: runner.os == 'Windows'
+        working-directory: cli
+        shell: pwsh
+        run: ./eng/build-sdk-feed.ps1 -Sdk ../koras-connect-sdk
+      - name: Restore
+        working-directory: cli
+        run: dotnet restore Koras.Connect.Cli.slnx
+      - name: Build
+        working-directory: cli
+        run: dotnet build Koras.Connect.Cli.slnx -c Release --no-restore
+      - name: Test
+        working-directory: cli
+        run: dotnet test --solution Koras.Connect.Cli.slnx -c Release --no-build
+      - name: Pack and smoke-test the installed tool (bash)
+        if: runner.os != 'Windows'
+        working-directory: cli
+        run: eng/smoke-install.sh
+      - name: Pack and smoke-test the installed tool (PowerShell)
+        if: runner.os == 'Windows'
+        working-directory: cli
+        shell: pwsh
+        run: ./eng/smoke-install.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: koras-connect-cli-${{ matrix.os }}
+          path: cli/artifacts/pkg/*.nupkg
