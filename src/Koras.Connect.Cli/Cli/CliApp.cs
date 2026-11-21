@@ -66,6 +66,8 @@ public static class CliApp
         if (Is(p, "profile", "validate")) return ProfileCommands.Validate;
         if (Is(p, "doctor")) return DoctorCommand.Run;
         if (Is(p, "adp", "workers", "export")) return ExportCommands.AdpWorkers;
+        if (Is(p, "sap", "persons", "export")) return ExportCommands.SapPersons;
+        if (Is(p, "qualtrics", "responses", "export")) return ExportCommands.QualtricsResponses;
         return null;
     }
 }
@@ -83,6 +85,8 @@ Commands:
   profile validate NAME    Check a profile locally; credential references are resolved but never printed
   doctor --profile NAME    Validate, then run one minimal read to diagnose auth/connectivity
   adp workers export       Export ADP workers          (--fields required)
+  sap persons export       Export SAP SuccessFactors persons (--fields required)
+  qualtrics responses export  Start/resume a Qualtrics response export and download the vendor file
 
 Common export options:
   --profile NAME           Profile to use (required)

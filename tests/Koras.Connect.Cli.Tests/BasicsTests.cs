@@ -49,7 +49,7 @@ public class VersionAndHelpTests
     {
         using var cli = new TestCli();
         Assert.Equal(0, await cli.Run("--help"));
-        foreach (var c in new[] { "profile init", "doctor", "adp workers export" })
+        foreach (var c in new[] { "profile init", "doctor", "adp workers export", "sap persons export", "qualtrics responses export" })
             Assert.Contains(c, cli.Stdout);
         Assert.Contains("Exit codes", cli.Stdout);
     }
